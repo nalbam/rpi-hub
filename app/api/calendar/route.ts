@@ -17,6 +17,16 @@ interface CalendarEvent {
   isAllDay: boolean;
 }
 
+// Extended type for ical.js Time object with additional properties
+// The official ical.js types don't include these, but they exist at runtime
+interface ICALTime {
+  isDate?: boolean;
+  year: number;
+  month: number;
+  day: number;
+  toJSDate(): Date;
+}
+
 export async function GET() {
   // Read configuration from server
   const config = getServerConfig();
@@ -57,7 +67,7 @@ export async function GET() {
         // Check if this is an all-day event
         // In iCal, all-day events have isDate=true on the Time object
         // TypeScript definition may not include this property, so we use type assertion
-        const isAllDay = (event.startDate as any).isDate === true;
+        const isAllDay = (event.startDate as ICALTime).isDate === true;
 
         let start: Date | string;
         let end: Date | string;
@@ -65,8 +75,8 @@ export async function GET() {
         if (isAllDay) {
           // For all-day events, return date strings (YYYY-MM-DD) to avoid timezone issues
           // Access the year, month, day properties directly from ical.js Time object
-          const startTime = event.startDate as any;
-          const endTime = event.endDate as any;
+          const startTime = event.startDate as ICALTime;
+          const endTime = event.endDate as ICALTime;
 
           start = `${startTime.year}-${String(startTime.month).padStart(2, '0')}-${String(startTime.day).padStart(2, '0')}`;
           end = `${endTime.year}-${String(endTime.month).padStart(2, '0')}-${String(endTime.day).padStart(2, '0')}`;

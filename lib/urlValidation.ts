@@ -23,6 +23,8 @@ export function validateCalendarUrl(urlString: string): { valid: boolean; error?
   }
 
   const hostname = url.hostname.toLowerCase();
+  // Strip brackets from IPv6 addresses for IP validation
+  const hostnameForIPCheck = hostname.replace(/^\[|\]$/g, '');
 
   // Block localhost and common loopback names
   const localhostPatterns = [
@@ -30,17 +32,17 @@ export function validateCalendarUrl(urlString: string): { valid: boolean; error?
     '127.0.0.1',
     '0.0.0.0',
     '::1',
-    '::ffff:127.0.0.1',
+    '[::1]',
   ];
 
-  if (localhostPatterns.some(pattern => hostname === pattern || hostname.includes(pattern))) {
+  if (localhostPatterns.some(pattern => hostname === pattern)) {
     return { valid: false, error: 'Localhost URLs are not allowed' };
   }
 
   // Block metadata service IPs (cloud providers)
   const metadataIPs = [
     '169.254.169.254', // AWS, Azure, GCP metadata
-    'fd00:ec2::254',   // AWS IPv6 metadata
+    '[fd00:ec2::254]', // AWS IPv6 metadata (with brackets as returned by URL.hostname)
   ];
 
   if (metadataIPs.includes(hostname)) {
@@ -48,9 +50,9 @@ export function validateCalendarUrl(urlString: string): { valid: boolean; error?
   }
 
   // Check if hostname is an IP address
-  const ipVersion = isIP(hostname);
+  const ipVersion = isIP(hostnameForIPCheck);
   if (ipVersion) {
-    if (!isAllowedIP(hostname, ipVersion)) {
+    if (!isAllowedIP(hostnameForIPCheck, ipVersion)) {
       return { valid: false, error: 'IP address is in a restricted range' };
     }
   }

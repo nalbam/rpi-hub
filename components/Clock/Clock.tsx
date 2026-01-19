@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { ko, ja, zhCN } from 'date-fns/locale';
 import { toZonedTime } from 'date-fns-tz';
 import { useConfigWithRetry } from '@/lib/hooks/useConfigWithRetry';
-import { getLocaleFromDateFormat, type DateFormatLocale } from '@/lib/config';
+import { getLocaleFromDateFormat } from '@/lib/config';
 
 // Map locale string to date-fns locale object
 const LOCALE_MAP = {

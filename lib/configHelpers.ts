@@ -3,6 +3,11 @@ import { join } from 'path';
 import { defaultConfig } from './config';
 import type { KioskConfig } from './config';
 
+// Helper type for deep partial (allows partial nested objects)
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
 /**
  * Merges partial config with default config to ensure all required fields exist.
  *
@@ -20,11 +25,11 @@ import type { KioskConfig } from './config';
  * ```
  */
 export function mergeConfigWithDefaults(
-  partialConfig: Partial<KioskConfig>
+  partialConfig: DeepPartial<KioskConfig>
 ): KioskConfig {
   return {
     ...defaultConfig,
-    ...partialConfig,
+    ...(partialConfig as Partial<KioskConfig>),
     weatherLocation: {
       ...defaultConfig.weatherLocation,
       ...partialConfig.weatherLocation,
@@ -62,7 +67,7 @@ export function getServerConfig(): KioskConfig {
     // If config.json exists, read and return it
     if (existsSync(configPath)) {
       const fileContent = readFileSync(configPath, 'utf-8');
-      const fileConfig = JSON.parse(fileContent) as Partial<KioskConfig>;
+      const fileConfig = JSON.parse(fileContent) as DeepPartial<KioskConfig>;
 
       // Merge with default config to ensure all required fields exist
       return mergeConfigWithDefaults(fileConfig);

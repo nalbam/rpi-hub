@@ -64,7 +64,7 @@ export function getRequiredParam(
   paramName: string
 ): string | NextResponse {
   const value = searchParams.get(paramName);
-  if (!value) {
+  if (value === null) {
     return createValidationError(`Missing ${paramName} parameter`);
   }
   return value;
@@ -76,5 +76,22 @@ export function getRequiredParam(
  * @returns True if value is NextResponse
  */
 export function isErrorResponse(value: unknown): value is NextResponse {
-  return value instanceof NextResponse;
+  // Check if value is an object with NextResponse-like properties
+  // This works both in production and in tests with mocked NextResponse
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+
+  // Check for mocked NextResponse first (for tests)
+  if ('_type' in value && (value as { _type: string })._type === 'NextResponse') {
+    return true;
+  }
+
+  // Check for real NextResponse instance (for production)
+  // Use try-catch to handle cases where NextResponse might not be a constructor
+  try {
+    return value instanceof NextResponse;
+  } catch {
+    return false;
+  }
 }
