@@ -35,7 +35,7 @@ Click the Settings button in the browser.
 **Features**:
 - **Timezone**: Dropdown with all IANA timezones, grouped by region (Africa, America, Asia, etc.)
   - "Use Browser Default" button to apply detected timezone
-- **Date Format**: Dropdown with 7 predefined formats
+- **Date Format**: Dropdown with 13 predefined formats (English, Korean, Japanese, Chinese)
 - **City**: Text input with "Use Browser Default" button
 - **Coordinates**: Numeric inputs with two helper buttons:
   - "Detect Location" - Triggers browser geolocation
@@ -138,7 +138,9 @@ Full list: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 ## Date Formats
 
-Choose from these formats in settings:
+Choose from 13 formats in settings:
+
+**English formats (7)**:
 - `EEEE, MMMM dd, yyyy` - Wednesday, January 01, 2026
 - `MMMM dd, yyyy` - January 01, 2026
 - `yyyy-MM-dd` - 2026-01-01
@@ -146,6 +148,18 @@ Choose from these formats in settings:
 - `dd/MM/yyyy` - 01/01/2026
 - `dd MMMM yyyy` - 01 January 2026
 - `EEE, MMM dd, yyyy` - Wed, Jan 01, 2026
+
+**Korean formats (2)**:
+- `yyyy년 M월 d일 EEEE` - 2026년 1월 8일 수요일
+- `yyyy년 M월 d일 (EEE)` - 2026년 1월 8일 (수)
+
+**Japanese formats (2)**:
+- `yyyy年M月d日 EEEE` - 2026年1月8日 水曜日
+- `yyyy年M月d日(EEE)` - 2026年1月8日(水)
+
+**Chinese formats (2)**:
+- `yyyy年M月d日 (EEEE)` - 2026年1月8日 (星期三)
+- `yyyy年M月d日` - 2026年1月8日
 
 ## Weather Coordinates
 

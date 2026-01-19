@@ -34,19 +34,38 @@ RPI Hub is a Raspberry Pi kiosk mode display application built with Next.js 16 (
 
 ### Key Modules
 
-#### Configuration (`lib/config.ts`, `lib/storage.ts`)
+#### Configuration (`lib/config.ts`, `lib/storage.ts`, `lib/configHelpers.ts`)
 - `KioskConfig` interface defines all user settings (timezone, weather location, calendar URL, RSS feeds, refresh intervals)
+- `DateFormatOption` interface with locale support ('en', 'ko', 'ja', 'zh-CN')
+- `DATE_FORMAT_OPTIONS` array with 13 formats (7 English + 6 Asian language formats)
+- `getLocaleFromDateFormat(dateFormat)` - Returns locale for given date format
 - `getConfig()` - Reads from server via `/api/config`, which loads `config.json` with fallback to `defaultConfig`
 - `saveConfig()` - Persists updates to server via POST `/api/config`, which writes to `config.json`
 - `detectBrowserSettings()` - Auto-detects timezone, city, and language/country for Google News RSS
 - `detectGeolocation()` - Requests browser geolocation for weather coordinates (GPS-based)
 - `detectLocationByIP()` - Detects location via IP address using ipapi.co service (fallback method)
 - `initializeConfig()` - First-visit setup with multi-layer detection:
-  1. Parallel execution: GPS geolocation + IP-based detection
-  2. Priority: GPS → IP → Geocoding → defaults
-  3. Reverse geocoding for GPS coordinates to get city name
-  4. Forward geocoding for city names to get timezone
-  5. Auto-save to `config.json`
+  1. Checks `_initialized` flag in config (false = needs initialization)
+  2. Parallel execution: GPS geolocation + IP-based detection
+  3. Priority: GPS → IP → Geocoding → defaults
+  4. Reverse geocoding for GPS coordinates to get city name
+  5. Forward geocoding for city names to get timezone
+  6. Auto-save to `config.json`
+  7. Note: `_initialized` flag is internal, used by `useConfigWithRetry` hook for retry logic
+- `LANGUAGE_TO_COUNTRY` - Maps 36 language codes to primary country codes
+- `detectLanguageAndCountry()` - Detects browser language and country from navigator.language
+- `generateGoogleNewsRSS(language, country)` - Generates localized Google News RSS URL
+- `mergeConfigWithDefaults(partialConfig)` - Deep merge partial config with defaults (server-side)
+- `getServerConfig()` - Reads config.json from server file system (server-side only)
+
+#### API Helpers (`lib/apiHelpers.ts`)
+Standardized response creation for API routes:
+- `createErrorResponse(message, error?, status?)` - Error response with logging (default 500)
+- `createValidationError(error)` - Validation error (400 status)
+- `createSuccessResponse<T>(data)` - Success response wrapper
+- `handleValidation(validation)` - Returns error response if invalid, null if valid
+- `getRequiredParam(searchParams, paramName)` - Extract and validate required parameter
+- `isErrorResponse(value)` - Type guard for NextResponse
 
 #### Security (`lib/urlValidation.ts`)
 CRITICAL: All external URLs (calendar, RSS) MUST pass through `validateCalendarUrl()` to prevent SSRF attacks.
@@ -128,12 +147,12 @@ components/                   # Reusable widgets
     └── Toast.tsx             # Notification system
 
 lib/                          # Shared utilities
-├── config.ts                 # Configuration types and defaults
+├── config.ts                 # Configuration types, defaults, and date format options
 ├── constants.ts              # System constants (API limits, validation ranges)
-├── storage.ts                # Configuration management and browser detection
+├── storage.ts                # Configuration management, browser detection, and i18n helpers
 ├── urlValidation.ts          # SSRF protection utilities
 ├── validation.ts             # Input validation (coordinates, etc.)
-├── apiHelpers.ts             # API response creation helpers
+├── apiHelpers.ts             # API response creation helpers (errors, success, validation)
 ├── configHelpers.ts          # Server-side config loading and merging
 └── hooks/                    # Custom React hooks
     ├── useWidgetData.ts      # Generic data fetching with auto-refresh
@@ -199,10 +218,17 @@ New widgets should:
 - Configurable date format (7 preset options)
 
 **Weather Widget**:
-- 12 distinct weather code mappings with icons
+- 23 distinct weather code mappings from Open-Meteo API:
+  - Clear/Cloudy: 0-3 (Clear, Mostly Clear, Partly Cloudy, Cloudy)
+  - Fog: 45, 48
+  - Drizzle: 51, 53, 55
+  - Rain: 61, 63, 65 (Rain, Heavy Rain), 80, 81, 82 (Showers, Heavy Rain)
+  - Snow: 71, 73, 75 (Snow, Heavy Snow), 85, 86 (Snow, Heavy Snow)
+  - Sleet: 77
+  - Thunderstorm: 95, 96, 99
 - Animated icons using CSS keyframes (`rotate`, `sway`, `fade`, `bounce`, `float`, `flash`, `pulse`)
 - Temperature, humidity, wind speed display
-- Weather descriptions from Open-Meteo API
+- Weather descriptions from code mapping in app/api/weather/route.ts:34-59
 
 **Calendar Widget**:
 - All-day event detection and special formatting
@@ -210,6 +236,11 @@ New widgets should:
 - Location display with MapPin icon
 - Events sorted by start time
 - Filters events within 30 days
+- CalendarEvent interface:
+  - `title`, `description`, `location` (strings)
+  - `start`, `end` (Date objects for timed events, YYYY-MM-DD strings for all-day events)
+  - `isAllDay` (boolean) - detected from ical.js Time object's isDate property
+- Timezone-safe handling: all-day events use date strings to avoid timezone conversion issues
 
 **RSS Widget**:
 - Automatic carousel (10-second rotation)
@@ -224,7 +255,7 @@ New widgets should:
   - Coordinate ranges: latitude (-90 to 90), longitude (-180 to 180)
   - Query string length limits (max 100 characters for geocoding)
   - Timezone validation using `Intl.supportedValuesOf('timeZone')`
-  - Date format whitelist (7 predefined formats)
+  - Date format whitelist (13 predefined formats: 7 English + 6 Asian language formats)
 - **Response Size Limits**: Prevent memory exhaustion from large responses
   - Default: 10MB maximum response size
   - Chunk-by-chunk validation during fetch

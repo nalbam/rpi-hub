@@ -80,7 +80,7 @@ Features:
 - "Use Browser Default" buttons for timezone and city
 - "Detect Location" button for coordinates
 - "View on Google Maps" to verify location
-- Date format selector (7 formats available)
+- Date format selector (13 formats: 7 English + 6 Asian language formats)
 
 ### Method 2: Configuration File (config.json)
 
@@ -111,7 +111,7 @@ Manage settings with shell script:
 
 **Time**
 - Timezone (dropdown with all IANA timezones)
-- Date format (7 predefined formats)
+- Date format (13 predefined formats: English, Korean, Japanese, Chinese)
 - Time server (optional)
 
 **Weather**

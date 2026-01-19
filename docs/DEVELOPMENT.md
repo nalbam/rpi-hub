@@ -92,34 +92,81 @@ scripts/
 4. Add component to `app/page.tsx`
 5. Update settings page
 
-### API Route Pattern
+### API Route Patterns
+
+#### Pattern 1: External URL Fetching (with SSRF Protection)
 
 ```typescript
-import { NextResponse } from 'next/server';
 import { validateCalendarUrl, fetchWithTimeout } from '@/lib/urlValidation';
-import { API, PROCESSING_LIMITS } from '@/lib/constants';
+import { API } from '@/lib/constants';
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  handleValidation,
+} from '@/lib/apiHelpers';
+import { getServerConfig } from '@/lib/configHelpers';
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const url = searchParams.get('url');
+export async function GET() {
+  // Read configuration from server
+  const config = getServerConfig();
+  const url = config.calendarUrl;
 
-  if (!url) {
-    return NextResponse.json({ error: 'Missing URL' }, { status: 400 });
+  // If no URL configured, return empty result
+  if (!url || url.trim() === '') {
+    return createSuccessResponse({ events: [] });
   }
 
   // SSRF validation required
-  const validation = validateCalendarUrl(url);
-  if (!validation.valid) {
-    return NextResponse.json({ error: validation.error }, { status: 400 });
+  const validationError = handleValidation(validateCalendarUrl(url));
+  if (validationError) {
+    return validationError;
   }
 
   try {
     // Apply timeout and size limits
-    const response = await fetchWithTimeout(url, API.TIMEOUT_MS, API.MAX_RSS_SIZE);
+    const response = await fetchWithTimeout(url, API.TIMEOUT_MS, API.MAX_CALENDAR_SIZE);
     const data = await response.text();
-    return NextResponse.json({ data });
+    return createSuccessResponse({ data });
   } catch (error) {
-    return NextResponse.json({ error: 'Fetch failed' }, { status: 500 });
+    return createErrorResponse('Failed to fetch data', error);
+  }
+}
+```
+
+#### Pattern 2: Server Config-Based API (No External Fetch)
+
+```typescript
+import { API } from '@/lib/constants';
+import {
+  createErrorResponse,
+  createSuccessResponse,
+} from '@/lib/apiHelpers';
+import { getServerConfig } from '@/lib/configHelpers';
+
+export async function GET() {
+  // Read configuration from server
+  const config = getServerConfig();
+  const { lat, lon } = config.weatherLocation;
+
+  // Validate coordinates from config
+  if (typeof lat !== 'number' || typeof lon !== 'number') {
+    return createErrorResponse('Invalid coordinates in server configuration', undefined, 500);
+  }
+
+  try {
+    // Fetch from trusted external API
+    const response = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m`
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch data');
+    }
+
+    const data = await response.json();
+    return createSuccessResponse({ temperature: data.current.temperature_2m });
+  } catch (error) {
+    return createErrorResponse('Failed to fetch data', error);
   }
 }
 ```
